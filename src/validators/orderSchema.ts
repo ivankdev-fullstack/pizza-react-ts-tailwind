@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isValidPhone } from "../utils/helpers";
 
 export const orderSchema = z.object({
-  customer: z.string().min(1, "You should enter your name.").trim(),
+  customer: z.string().trim().min(1, "You should enter your name."),
   address: z.string().min(1, "You should enter your address."),
   phone: z
     .string()
