@@ -43,7 +43,7 @@ function CreateOrder() {
 
       store.dispatch(clearCart());
       navigate(`/order/${newOrder.id}`);
-    } catch (e: any) {
+    } catch (e) {
       setSubmitting(false);
       console.log(e);
     }
@@ -58,7 +58,7 @@ function CreateOrder() {
       <form onSubmit={onSubmit} className="flex flex-col gap-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">First Name</label>
-          <div className="grow">
+          <div className="grow relative">
             <input
               className="input w-full"
               type="text"
@@ -72,7 +72,7 @@ function CreateOrder() {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">Phone number</label>
-          <div className="grow">
+          <div className="grow relative">
             <input
               className="input w-full"
               type="tel"
@@ -85,7 +85,7 @@ function CreateOrder() {
 
         <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">Address</label>
-          <div className="grow">
+          <div className="grow relative">
             <input
               className="input w-full"
               type="text"

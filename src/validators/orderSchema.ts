@@ -1,8 +1,14 @@
 import { z } from "zod";
+import { isValidPhone } from "../utils/helpers";
 
 export const orderSchema = z.object({
-  customer: z.string().min(1, "You should enter your name."),
+  customer: z.string().min(1, "You should enter your name.").trim(),
   address: z.string().min(1, "You should enter your address."),
-  phone: z.string().min(1, "You should enter your phone number."),
+  phone: z
+    .string()
+    .min(1, "You should enter your phone number.")
+    .refine(isValidPhone, {
+      message: "Invalid phone number",
+    }),
   priority: z.boolean(),
 });
