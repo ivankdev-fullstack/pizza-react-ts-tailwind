@@ -1,39 +1,53 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import {
-  ActionFunctionArgs,
-  Form,
-  redirect,
-  useNavigation,
-} from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../../hooks";
+import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router";
+import { z } from "zod";
+import { useAppSelector } from "../../hooks";
 import { createOrder } from "../../services/apiRestaurant";
 import store from "../../store";
 import Button from "../../ui/Button";
-import { fetchAddress } from "../../utils/fetchUserAddress";
-import { formatCurrency, isValidPhone } from "../../utils/helpers";
+import { formatCurrency } from "../../utils/helpers";
+import { orderSchema } from "../../validators/orderSchema";
 import { clearCart, getCart, getTotalCartPrice } from "../cart/cartSlice";
 import EmptyCart from "../cart/EmptyCart";
+import ErrorFormMessage from "./ErrorFormMessage";
+
+export type OrderFormData = z.infer<typeof orderSchema>;
 
 function CreateOrder() {
   const [withPriority, setWithPriority] = useState(false);
-  const {
-    username,
-    status: addressStatus,
-    position,
-    address,
-    error,
-  } = useAppSelector((state) => state.user);
-  const isLoadingAddress = addressStatus === "loading";
-
-  const navigation = useNavigation();
-  const isSubmitting = navigation.state === "submitting";
-
-  const dispatch = useAppDispatch();
-
+  const { username } = useAppSelector((state) => state.user);
   const cart = useAppSelector(getCart);
   const totalCartPrice = useAppSelector(getTotalCartPrice);
+  const navigate = useNavigate();
+
   const priorityPrice = withPriority ? totalCartPrice * 0.2 : 0;
   const totalPrice = totalCartPrice + priorityPrice;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<OrderFormData>({ resolver: zodResolver(orderSchema) });
+  const [isSubmitting, setSubmitting] = useState(false);
+
+  const onSubmit = handleSubmit(async (data: OrderFormData) => {
+    try {
+      setSubmitting(true);
+      const order = {
+        ...data,
+        cart,
+      };
+      const newOrder = await createOrder(order);
+
+      store.dispatch(clearCart());
+      navigate(`/order/${newOrder.id}`);
+    } catch (e: any) {
+      setSubmitting(false);
+      console.log(e);
+    }
+  });
 
   if (!cart.length) return <EmptyCart />;
 
@@ -41,66 +55,54 @@ function CreateOrder() {
     <div className="px-4 py-6">
       <h2 className="mb-8 text-xl font-semibold">Ready to order? Let's go!</h2>
 
-      <Form method="POST">
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <form onSubmit={onSubmit} className="flex flex-col gap-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">First Name</label>
-          <input
-            className="input grow"
-            type="text"
-            name="customer"
-            defaultValue={username}
-            required
-          />
-        </div>
-
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <label className="sm:basis-40">Phone number</label>
           <div className="grow">
-            <input className="input w-full" type="tel" name="phone" required />
+            <input
+              className="input w-full"
+              type="text"
+              defaultValue={username}
+              {...register("customer")}
+              required
+            />
+            <ErrorFormMessage>{errors.customer?.message}</ErrorFormMessage>
           </div>
         </div>
 
-        <div className="relative mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="sm:basis-40">Phone number</label>
+          <div className="grow">
+            <input
+              className="input w-full"
+              type="tel"
+              {...register("phone")}
+              required
+            />
+            <ErrorFormMessage>{errors.phone?.message}</ErrorFormMessage>
+          </div>
+        </div>
+
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">Address</label>
           <div className="grow">
             <input
               className="input w-full"
               type="text"
-              name="address"
-              disabled={isLoadingAddress}
-              defaultValue={address}
+              {...register("address")}
               required
             />
-            {addressStatus === "error" && (
-              <p className="mt-2 rounded-md bg-red-100 p-2 text-xs text-red-700">
-                {error}
-              </p>
-            )}
+            <ErrorFormMessage>{errors.address?.message}</ErrorFormMessage>
           </div>
-
-          {!position.latitude && !position.longitude && (
-            <span className="absolute right-[3px] top-[3px] z-50 md:right-[5px] md:top-[5px]">
-              <Button
-                disabled={isLoadingAddress}
-                type="small"
-                onClick={(e) => {
-                  e.preventDefault();
-                  dispatch(fetchAddress());
-                }}
-              >
-                Get position
-              </Button>
-            </span>
-          )}
         </div>
 
-        <div className="mb-12 flex items-center gap-5">
+        <div className="mb-4 flex items-center gap-5">
           <input
             className="h-6 w-6 accent-yellow-400 focus:outline-none focus:ring focus:ring-yellow-400 focus:ring-offset-2"
             type="checkbox"
-            name="priority"
             id="priority"
             checked={withPriority}
+            {...register("priority")}
             onChange={(e) => setWithPriority(e.target.checked)}
           />
           <label htmlFor="priority" className="font-medium">
@@ -108,51 +110,14 @@ function CreateOrder() {
           </label>
         </div>
 
-        <div>
-          <input type="hidden" name="cart" value={JSON.stringify(cart)} />
-          <input
-            type="hidden"
-            name="position"
-            value={
-              position.longitude && position.latitude
-                ? `${position.latitude},${position.longitude}`
-                : ""
-            }
-          />
-
-          <Button disabled={isSubmitting || isLoadingAddress} type="primary">
-            {isSubmitting
-              ? "Placing order...."
-              : `Order now from ${formatCurrency(totalPrice)}`}
-          </Button>
-        </div>
-      </Form>
+        <Button type="primary">
+          {isSubmitting
+            ? "Placing order...."
+            : `Order now from ${formatCurrency(totalPrice)}`}
+        </Button>
+      </form>
     </div>
   );
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  const formData = await request.formData();
-  const data = Object.fromEntries(formData);
-
-  const order = {
-    ...data,
-    cart: JSON.parse(data.cart),
-    priority: data.priority === "true",
-  };
-
-  const errors = {};
-  if (!isValidPhone(order.phone))
-    errors.phone =
-      "Please give us your correct phone number. We might need it to contact you.";
-
-  if (Object.keys(errors).length > 0) return errors;
-
-  const newOrder = await createOrder(order);
-
-  store.dispatch(clearCart());
-
-  return redirect(`/order/${newOrder.id}`);
 }
 
 export default CreateOrder;

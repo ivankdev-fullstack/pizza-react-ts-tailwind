@@ -1,3 +1,4 @@
+import { OrderFormData } from "../features/order/CreateOrder";
 import Order from "../features/order/Order";
 
 const API_URL = "https://react-fast-pizza-api.jonas.io/api";
@@ -19,7 +20,7 @@ export async function getOrder(id: string) {
   return data;
 }
 
-export async function createOrder(newOrder: Order) {
+export async function createOrder(newOrder: OrderFormData) {
   try {
     const res = await fetch(`${API_URL}/order`, {
       method: "POST",
