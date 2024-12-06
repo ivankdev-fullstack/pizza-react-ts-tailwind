@@ -1,4 +1,4 @@
-# Fast Pizza Restaurant App
+# Fast Pizza Delivery App
 
 Through this app tou choose and order pizzas you like and estimate its arrival time.
 
